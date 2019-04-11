@@ -1,5 +1,0 @@
-<? php
-$subject = "こんにちは。";
-$body = "このページはテストページです。";
-?>
-<! doctype html>
