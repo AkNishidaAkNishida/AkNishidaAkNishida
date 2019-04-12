@@ -1,6 +1,6 @@
 <?php
 //こちらの本を参考にしました↓
-//DESIGNMAP. PHP入門 確認画面付きのお問い合わせフォームをつくりながらPHPを学ぶ（第2版） (DESIGNMAP BOOKS) (Kindle の位置No.751-755). DESIGNMAP. Kindle 版. 
+//DESIGNMAP. PHP入門 確認画面付きのお問い合わせフォームをつくりながらPHPを学ぶ（第2版） (DESIGNMAP BOOKS) DESIGNMAP. Kindle 版. 
 
 
 session_start();
