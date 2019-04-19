@@ -1,0 +1,185 @@
+Const デバッグ As Integer = 0  'ここを1にすると式を残す
+Sub データのDL()
+
+
+   Dim sqltext      As String  'SQL分
+   Dim CHK_Date     As Date    '日付Date型
+   Dim CHK_strDate  As String  '日付String型
+   Dim from_Date    As Date    '日付用Date型変数①
+   Dim to_Date      As Date    '日付用Date型変数②
+   Dim i            As Integer 'For Itaration
+   Dim j            As Integer 'For Itaration
+   Dim path1         As String  '取得するシートのpath
+   Dim path2         As String  '次に取得するシートのpath
+   Dim WB1          As Workbook 'コピー元
+   Dim WB2          As Workbook 'コピー先
+   
+   Dim Date1        As Date     '前回実行日
+   Dim Date2        As Date     '前回実行日
+   
+   GetLatestNavDate
+   NAV_TXT取得
+   
+   
+   '実行日時チェック（ボタンを押された日が初期画面Ｈ１４セルの日付と同じ場合は処理を行わない）
+   Date1 = Format(ThisWorkbook.Sheets("初期画面").Range("H14"), "yyyy/mm/dd")
+   Date2 = Date
+   
+   If Date1 = Date2 Then
+        MsgBox "1日1回しか実行できません。"
+        Exit Sub
+   End If
+   
+   '最終セル取得
+   Dim last As Integer
+   last = ThisWorkbook.Sheets("まとめ").Range("A10").End(xlDown).Row
+    
+   Call プルダウンデフォルト(last)
+   
+   
+   'オートフィルタの解除
+    For i = 1 To Sheets.Count
+        Sheets(i).AutoFilterMode = False
+    Next i
+    Application.Calculation = xlCalculationAutomatic
+    
+    
+    '前日データの貼付
+     With Sheets("VIEW_RULE")
+
+        .Select
+        .Range("AA5:AB1048576").ClearContents
+        .Range("C5:D1048576").Copy
+        .Range("AA5:AB1048576").PasteSpecial
+        Application.CutCopyMode = False
+        
+     End With
+
+    
+    '日付シートの更新
+    With Sheets("日付")
+        
+        .Select
+        .Range("AA2:AI1048576").ClearContents
+
+        
+    '営業日のDL
+        from_Date = .Range("B2")
+        to_Date = .Range("B4")
+        
+        
+        sqltext = " SELECT フィールド１,フィールド２" & _
+                  " FROM テーブル名" & _
+                  " WHERE 日付 BETWEEN " & _
+                  " TO_DATE( '" & Format(from_Date, "yyyy/mm/dd") & "','yyyy/mm/dd')" & _
+                  " AND " & " TO_DATE( '" & Format(to_Date, "yyyy/mm/dd") & "','yyyy/mm/dd')" & _
+                  " AND フラグ１ = '1' " & _
+                  " ORDER BY フィールド１"
+      
+        Call FAIMS_SQL(sqltext, .Range("AA2"))'書き出し開始セル
+        
+     '月末データ２のDL
+        to_Date = .Range("B8")
+        from_Date = WorksheetFunction.EoMonth(to_Date, -14)
+
+        sqltext = " SELECT フィールド１,フィールド３" & _
+                  " FROM TF.MT_カレンダーテーブル" & _
+                  " WHERE 日付 BETWEEN " & _
+                  " TO_DATE( '" & Format(from_Date, "yyyy/mm/dd") & "','yyyy/mm/dd')" & _
+                  " AND " & " TO_DATE( '" & Format(to_Date, "yyyy/mm/dd") & "','yyyy/mm/dd')" & _
+                  " AND フィールド３ = '1' " & _
+                  " ORDER BY フィールド１"
+      
+        Call FAIMS_SQL(sqltext, .Range("AD2"))
+        
+'        'チェック日の定義（2営業日前）
+'        CHK_Date = .Range("B8")
+'        CHK_strDate = Format(CHK_Date, "yyyymmdd")
+        
+    End With
+
+
+   'PP_ATTRIBUTEシートの更新
+    With Sheets("PP_ATTRIBUTE")
+    
+        .Select
+        .Range("C5:G1048576").ClearContents
+        
+        
+        sqltext = " SELECT PORTFOLIO,PORT_NAME_J,DATE_KAIYAKU" & _
+                  " FROM KOMONADMI.PP_ATTRIBUTE" & _
+                  " WHERE LENGTH(PORTFOLIO) = 4 " & _
+                  " AND PORTFOLIO <= '7999' " & _
+                  " AND REAL_PORT = '0' " & _
+                  " ORDER BY PORTFOLIO"
+      
+        Call KOMON_SQL(sqltext, .Range("C5"))
+        
+    End With
+        
+    'VIEW_RULEシートの更新（最新のRule_IDを取得）
+    With Sheets("VIEW_RULE")
+
+        .Select
+        .Range("C5:D1048576").ClearContents
+        
+        sqltext = " SELECT PORTFOLIO,MAX(RULE_ID)" & _
+                  " FROM GL.VIEW_RULE" & _
+                  " WHERE LENGTH(PORTFOLIO) = 4 " & _
+                  " AND PORTFOLIO <= '7999' " & _
+                  " GROUP BY PORTFOLIO" & _
+                  " ORDER BY PORTFOLIO"
+      
+        Call GL_SQL(sqltext, .Range("C5"))
+              
+    End With
+
+    
+    With Sheets("まとめ")
+    .Select
+ 
+  '★★増減があれば修正要（lastAM = 45 のところ）
+  i = 10                    '最初の行
+  Set WB2 = ThisWorkbook    'WB2は★★.xlsm
+    
+    Do
+        path1 = .Cells(i, 59)
+        If Dir(path1) <> "" Then        '帳票が存在しない場合は、帳票のコピーを実施しない。
+        Set WB1 = Workbooks.Open(path1)
+
+            Do
+                path1 = .Cells(i, 59)   'Loop判定用にpath1は再読込
+                hantei = .Cells(i, 60)
+        
+                WB1.Worksheets(hantei).Cells.Copy
+                WB2.Worksheets(hantei).Activate
+                    Range("A1").Activate
+                WB2.Worksheets(hantei).Paste
+                    Application.CutCopyMode = False
+        
+                i = i + 1
+                path2 = .Cells(i, 59)   'Loop判定用に次の帳票パスをPath2へ読み込み
+        
+            Loop While path1 = path2    'いま開いたシートと次に開く帳票が同じなら判定シート名を変えてLoop
+
+        WB1.Close SaveChanges:=False
+        
+        Else
+            i = i + 1                   'シートが存在しない場合は、帳票のコピーを実施せず、iに1を加える
+        End If
+        
+    Loop While i <= last
+
+           
+    End With
+    
+    
+    
+    ThisWorkbook.Sheets("まとめ").Select
+    
+    '実行時間を記録
+    ThisWorkbook.Sheets("初期画面").Range("H14") = Now()
+    
+    MsgBox "結果出力　完了"
+            
+End Sub
