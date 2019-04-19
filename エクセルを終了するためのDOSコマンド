@@ -1,0 +1,8 @@
+taskkill /f /im "EXCEL.EXE"
+exit
+
+
+
+
+#こちらを参考にしました
+#https://www.pg-fl.jp/program/dos/doscmd/taskkill.htm
