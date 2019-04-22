@@ -1,0 +1,134 @@
+Sub シート保存()
+
+    Dim ReturnBook  As Workbook, TargetBook As Workbook
+    Dim strPathandFile     As String  '最終的に保存されるパスとシート名
+    Dim strFile As String    'シート名
+    
+    Dim j As Long
+    Dim path As String  'シートを保存するフォルダを指定する
+    Dim day1 As String
+
+    Set ReturnBook = ActiveWorkbook
+    
+    path = ReturnBook.Worksheets("初期画面").Range("A1").Value '保存先フォルダ
+    
+    
+    '最終セル取得
+   Dim last As Integer
+   last = ThisWorkbook.Sheets("一覧").Range("B10").End(xlDown).Row
+   
+
+    'フォルダがない場合は作成
+    If Dir(path, vbDirectory) = "" Then
+        MkDir (path)
+    Else
+    End If
+    
+
+    strPathandFile = path & "\" & Format(Date, "yyyymmdd") & "_" & Replace(ThisWorkbook.Name, ".xlsm", ".xlsx")
+    strFile = Format(Date, "yyyymmdd") & "_" & Replace(ThisWorkbook.Name, ".xlsm", ".xlsx")
+    
+    Application.Calculation = xlManual
+    
+    
+    
+
+
+    Set TargetBook = Workbooks.Add
+    
+    '一旦ファイル名をつけて保存
+    TargetBook.SaveAs Filename:=strPathandFile
+    
+    
+    If TargetBook.Sheets.Count < ReturnBook.Sheets.Count Then
+       TargetBook.Worksheets.Add Count:=ReturnBook.Sheets.Count - TargetBook.Sheets.Count
+    End If
+    
+    
+
+    If TargetBook.Sheets.Count < ReturnBook.Sheets.Count Then
+       TargetBook.Worksheets.Add Count:=ReturnBook.Sheets.Count - TargetBook.Sheets.Count
+
+    End If
+
+        For j = 1 To ReturnBook.Worksheets.Count
+
+
+            ReturnBook.Worksheets(j).Cells.Copy
+            TargetBook.Worksheets(j).Range("A1").PasteSpecial _
+                                        Paste:=xlValues, _
+                                        Operation:=xlNone, _
+                                        SkipBlanks:=False, _
+                                        Transpose:=False
+
+            ReturnBook.Worksheets(j).Cells.Copy
+            TargetBook.Worksheets(j).Range("A1").PasteSpecial xlPasteFormats
+
+            TargetBook.Worksheets(j).Name = ReturnBook.Worksheets(j).Name
+        
+        
+            '一覧シートをコピーするときには図形もコピーする
+            '表示を７０％にする
+            '印刷設定を指定する
+            If j = 2 Then
+                図形コピー (strFile)
+
+
+                With ActiveSheet.PageSetup
+                    .PrintArea = Range(Cells(1, 1), Cells(last, 10)).Address  '印刷の範囲
+                    
+                    .LeftMargin = 0.3     '余白を設定
+                    .RightMargin = 0.3
+                    .TopMargin = 0.9
+                    .BottomMargin = 1.5
+                    .HeaderMargin = 0.1
+                    .FooterMargin = 0.1
+                    
+                    .Orientation = xlLandscape               '印刷の向き　横
+                    
+                    .Zoom = False
+                    .FitToPagesTall = 1  '縦を1ページ内で印刷
+                    .FitToPagesWide = 1  '横を1ページ内で印刷
+                    
+                    .CenterHorizontally = True    '水平方向で中央寄せ
+                End With
+                
+                ActiveWindow.View = xlPageBreakPreview   '改ページプレビュー
+                
+                TargetBook.ActiveSheet.Range("A1").Select
+                
+                'ActiveWindow.Zoom = 70
+            End If
+            
+
+        Next
+    
+    '上書き保存&クローズ
+    TargetBook.Save
+    TargetBook.Close
+
+
+    Application.Calculation = xlAutomatic
+    
+    '実行時間を保存
+    ThisWorkbook.Sheets("初期画面").Range("B1") = Now()
+    
+    MsgBox "帳票作成　完了"
+
+End Sub
+
+
+Sub 図形コピー(strFile As String)
+    
+    ThisWorkbook.Worksheets("一覧").Activate
+    ActiveSheet.Shapes("印鑑欄").Copy
+    
+    
+    With Workbooks(strFile)
+        .Activate
+        .Sheets("一覧").Activate
+        .Sheets("一覧").Range("C1").Activate
+        ActiveSheet.Paste
+    End With
+
+End Sub
